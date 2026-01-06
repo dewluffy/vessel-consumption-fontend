@@ -18,6 +18,18 @@ api.interceptors.response.use(
     if (err?.response?.status === 401) {
       useAuthStore.getState().logout();
     }
+
+    
+    // debug
+    // console.log("API ERROR", {
+    //   url: err?.config?.url,
+    //   baseURL: err?.config?.baseURL,
+    //   status: err?.response?.status,
+    //   data: err?.response?.data,
+    // });
+
+
+    
     return Promise.reject(err);
   }
 );
