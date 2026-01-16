@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MoreVertical, Plus, Route, Search, X, Pencil, Trash2, Power } from "lucide-react";
-import { ExternalLinkIcon } from "lucide-react";
+import {
+  MoreVertical,
+  Plus,
+  Route,
+  Search,
+  X,
+  Pencil,
+  Trash2,
+  Power,
+} from "lucide-react";
+import { ExternalLinkIcon, BarChart3 } from "lucide-react";
 
 import { api } from "../lib/api";
 import { alertConfirm, alertError, alertSuccess } from "../lib/alert";
@@ -10,6 +19,7 @@ import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Select from "../components/ui/Select";
 import { Card, CardBody, CardHeader } from "../components/ui/Card";
+import VoyFuelReportModal from "../components/reports/VoyFuelReportModal";
 
 import { useNavigate } from "react-router-dom";
 
@@ -42,14 +52,20 @@ function toISOFromDatetimeLocal(v) {
 
 const monthOptions = [
   { value: "all", label: "ทั้งหมด" },
-  ...Array.from({ length: 12 }).map((_, i) => ({ value: String(i + 1), label: `${i + 1}` })),
+  ...Array.from({ length: 12 }).map((_, i) => ({
+    value: String(i + 1),
+    label: `${i + 1}`,
+  })),
 ];
 
 function yearOptions() {
   const now = new Date();
   const y = now.getFullYear();
   const years = [y - 1, y, y + 1, y + 2];
-  return [{ value: "all", label: "ทั้งหมด" }, ...years.map((yy) => ({ value: String(yy), label: String(yy) }))];
+  return [
+    { value: "all", label: "ทั้งหมด" },
+    ...years.map((yy) => ({ value: String(yy), label: String(yy) })),
+  ];
 }
 
 function statusLabel(status) {
@@ -59,7 +75,10 @@ function statusLabel(status) {
 
 export default function VoyPage() {
   const me = useAuthStore((s) => s.me);
-  const canManage = useMemo(() => ["EMPLOYEE", "SUPERVISOR", "MANAGER", "ADMIN"].includes(me?.role), [me?.role]);
+  const canManage = useMemo(
+    () => ["EMPLOYEE", "SUPERVISOR", "MANAGER", "ADMIN"].includes(me?.role),
+    [me?.role]
+  );
   const navigate = useNavigate();
 
   const isPrivileged = ["SUPERVISOR", "MANAGER", "ADMIN"].includes(me?.role);
@@ -76,6 +95,8 @@ export default function VoyPage() {
 
   const [rows, setRows] = useState([]);
   const [loadingRows, setLoadingRows] = useState(true);
+
+  const [openReport, setOpenReport] = useState(false);
 
   // Create modal
   const [openCreate, setOpenCreate] = useState(false);
@@ -127,7 +148,10 @@ export default function VoyPage() {
         setFilters((p) => ({ ...p, vesselId: String(list[0].id) }));
       }
     } catch (e) {
-      await alertError("โหลดเรือไม่สำเร็จ", e?.response?.data?.message || "ไม่สามารถโหลดรายการเรือได้");
+      await alertError(
+        "โหลดเรือไม่สำเร็จ",
+        e?.response?.data?.message || "ไม่สามารถโหลดรายการเรือได้"
+      );
     } finally {
       setLoadingVessels(false);
     }
@@ -139,7 +163,9 @@ export default function VoyPage() {
     if (filters.month !== "all") params.month = Number(filters.month);
 
     // list voyages (nested)
-    const { data } = await api.get(`/api/vessels/${vessel.id}/voyages`, { params });
+    const { data } = await api.get(`/api/vessels/${vessel.id}/voyages`, {
+      params,
+    });
     const list = Array.isArray(data) ? data : data?.voyages ?? [];
 
     return list.map((v) => ({
@@ -160,7 +186,9 @@ export default function VoyPage() {
       let all = [];
 
       if (selected === "all") {
-        const result = await Promise.all(vessels.map((v) => fetchVoyagesOfVessel(v)));
+        const result = await Promise.all(
+          vessels.map((v) => fetchVoyagesOfVessel(v))
+        );
         all = result.flat();
       } else {
         const vessel = vessels.find((v) => String(v.id) === String(selected));
@@ -176,17 +204,32 @@ export default function VoyPage() {
         all = all.filter((r) => {
           const vesselName = (r._vessel?.name ?? "").toLowerCase();
           const status = (r.status ?? "").toLowerCase();
-          const posting = `${r.postingYear ?? ""}-${r.postingMonth ?? ""}`.toLowerCase();
+          const posting = `${r.postingYear ?? ""}-${
+            r.postingMonth ?? ""
+          }`.toLowerCase();
           const voyNo = String(r.voyNo ?? "").toLowerCase();
           const idText = String(r.id ?? "");
-          return vesselName.includes(q) || status.includes(q) || posting.includes(q) || voyNo.includes(q) || idText.includes(q);
+          return (
+            vesselName.includes(q) ||
+            status.includes(q) ||
+            posting.includes(q) ||
+            voyNo.includes(q) ||
+            idText.includes(q)
+          );
         });
       }
 
-      all.sort((a, b) => new Date(b.startAt ?? 0).getTime() - new Date(a.startAt ?? 0).getTime());
+      all.sort(
+        (a, b) =>
+          new Date(b.startAt ?? 0).getTime() -
+          new Date(a.startAt ?? 0).getTime()
+      );
       setRows(all);
     } catch (e) {
-      await alertError("โหลด Voy ไม่สำเร็จ", e?.response?.data?.message || "ไม่สามารถโหลดรายการ Voy ได้");
+      await alertError(
+        "โหลด Voy ไม่สำเร็จ",
+        e?.response?.data?.message || "ไม่สามารถโหลดรายการ Voy ได้"
+      );
     } finally {
       setLoadingRows(false);
     }
@@ -200,20 +243,37 @@ export default function VoyPage() {
   useEffect(() => {
     if (!loadingVessels) loadRows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingVessels, vessels, filters.vesselId, filters.month, filters.year, filters.q]);
+  }, [
+    loadingVessels,
+    vessels,
+    filters.vesselId,
+    filters.month,
+    filters.year,
+    filters.q,
+  ]);
 
   // ---------- Create ----------
   const onOpenCreate = () => {
     const now = new Date();
     const firstVesselId =
-      vessels.length === 1 ? String(vessels[0].id) : (filters.vesselId !== "all" ? String(filters.vesselId) : "");
+      vessels.length === 1
+        ? String(vessels[0].id)
+        : filters.vesselId !== "all"
+        ? String(filters.vesselId)
+        : "";
 
     setCreateForm({
       vesselId: firstVesselId,
       voyNo: "",
       startAt: toDatetimeLocalValue(now),
-      postingMonth: filters.month !== "all" ? String(filters.month) : String(now.getMonth() + 1),
-      postingYear: filters.year !== "all" ? String(filters.year) : String(now.getFullYear()),
+      postingMonth:
+        filters.month !== "all"
+          ? String(filters.month)
+          : String(now.getMonth() + 1),
+      postingYear:
+        filters.year !== "all"
+          ? String(filters.year)
+          : String(now.getFullYear()),
     });
     setOpenCreate(true);
   };
@@ -232,15 +292,22 @@ export default function VoyPage() {
     const voyNo = createForm.voyNo.trim();
     if (!voyNo) return alertError("ข้อมูลไม่ครบ", "กรุณากรอก voyNo");
 
-    if (!createForm.startAt) return alertError("ข้อมูลไม่ครบ", "กรุณาเลือกเวลาเริ่ม");
+    if (!createForm.startAt)
+      return alertError("ข้อมูลไม่ครบ", "กรุณาเลือกเวลาเริ่ม");
     const startAt = toISOFromDatetimeLocal(createForm.startAt);
 
     const postingMonth = Number(createForm.postingMonth);
     const postingYear = Number(createForm.postingYear);
-    if (!postingMonth || postingMonth < 1 || postingMonth > 12) return alertError("ข้อมูลไม่ถูกต้อง", "เดือนที่บันทึกต้องอยู่ระหว่าง 1-12");
-    if (!postingYear || postingYear < 2000) return alertError("ข้อมูลไม่ถูกต้อง", "ปีที่บันทึกไม่ถูกต้อง");
+    if (!postingMonth || postingMonth < 1 || postingMonth > 12)
+      return alertError(
+        "ข้อมูลไม่ถูกต้อง",
+        "เดือนที่บันทึกต้องอยู่ระหว่าง 1-12"
+      );
+    if (!postingYear || postingYear < 2000)
+      return alertError("ข้อมูลไม่ถูกต้อง", "ปีที่บันทึกไม่ถูกต้อง");
 
-    const vesselName = vessels.find((v) => v.id === vesselId)?.name ?? `ID ${vesselId}`;
+    const vesselName =
+      vessels.find((v) => v.id === vesselId)?.name ?? `ID ${vesselId}`;
 
     const ok = await alertConfirm({
       title: "ยืนยันการสร้าง Voy",
@@ -263,7 +330,10 @@ export default function VoyPage() {
       await alertSuccess("สร้างสำเร็จ", "สร้าง Voy เรียบร้อย");
       await loadRows();
     } catch (e2) {
-      await alertError("สร้างไม่สำเร็จ", e2?.response?.data?.message || "ไม่สามารถสร้าง Voy ได้");
+      await alertError(
+        "สร้างไม่สำเร็จ",
+        e2?.response?.data?.message || "ไม่สามารถสร้าง Voy ได้"
+      );
     } finally {
       setSavingCreate(false);
     }
@@ -302,18 +372,26 @@ export default function VoyPage() {
     const voyNo = editForm.voyNo.trim();
     if (!voyNo) return alertError("ข้อมูลไม่ครบ", "กรุณากรอก voyNo");
 
-    if (!editForm.startAt) return alertError("ข้อมูลไม่ครบ", "กรุณาเลือกเวลาเริ่ม");
+    if (!editForm.startAt)
+      return alertError("ข้อมูลไม่ครบ", "กรุณาเลือกเวลาเริ่ม");
     const startAt = toISOFromDatetimeLocal(editForm.startAt);
 
-    const endAt = editForm.endAt ? toISOFromDatetimeLocal(editForm.endAt) : null;
+    const endAt = editForm.endAt
+      ? toISOFromDatetimeLocal(editForm.endAt)
+      : null;
     if (endAt && new Date(endAt) <= new Date(startAt)) {
       return alertError("ข้อมูลไม่ถูกต้อง", "เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม");
     }
 
     const postingMonth = Number(editForm.postingMonth);
     const postingYear = Number(editForm.postingYear);
-    if (!postingMonth || postingMonth < 1 || postingMonth > 12) return alertError("ข้อมูลไม่ถูกต้อง", "เดือนที่บันทึกต้องอยู่ระหว่าง 1-12");
-    if (!postingYear || postingYear < 2000) return alertError("ข้อมูลไม่ถูกต้อง", "ปีที่บันทึกไม่ถูกต้อง");
+    if (!postingMonth || postingMonth < 1 || postingMonth > 12)
+      return alertError(
+        "ข้อมูลไม่ถูกต้อง",
+        "เดือนที่บันทึกต้องอยู่ระหว่าง 1-12"
+      );
+    if (!postingYear || postingYear < 2000)
+      return alertError("ข้อมูลไม่ถูกต้อง", "ปีที่บันทึกไม่ถูกต้อง");
 
     const ok = await alertConfirm({
       title: "ยืนยันการแก้ไข Voy",
@@ -341,7 +419,10 @@ export default function VoyPage() {
       await alertSuccess("บันทึกสำเร็จ", "แก้ไข Voy เรียบร้อย");
       await loadRows();
     } catch (e2) {
-      await alertError("บันทึกไม่สำเร็จ", e2?.response?.data?.message || "ไม่สามารถแก้ไข Voy ได้");
+      await alertError(
+        "บันทึกไม่สำเร็จ",
+        e2?.response?.data?.message || "ไม่สามารถแก้ไข Voy ได้"
+      );
     } finally {
       setSavingEdit(false);
     }
@@ -356,12 +437,17 @@ export default function VoyPage() {
     const nextStatus = isClosed ? "OPEN" : "CLOSED";
 
     if (nextStatus === "CLOSED" && !row.endAt) {
-      return alertError("ยังปิดไม่ได้", "กรุณาแก้ไข Voy เพื่อใส่เวลาสิ้นสุดก่อน");
+      return alertError(
+        "ยังปิดไม่ได้",
+        "กรุณาแก้ไข Voy เพื่อใส่เวลาสิ้นสุดก่อน"
+      );
     }
 
     const ok = await alertConfirm({
       title: isClosed ? "ยืนยันการเปิด Voy" : "ยืนยันการปิด Voy",
-      text: `${isClosed ? "เปิด" : "ปิด"} Voy ${row.voyNo ?? row.id} ใช่หรือไม่`,
+      text: `${isClosed ? "เปิด" : "ปิด"} Voy ${
+        row.voyNo ?? row.id
+      } ใช่หรือไม่`,
       confirmText: "ยืนยัน",
       cancelText: "ยกเลิก",
     });
@@ -369,10 +455,16 @@ export default function VoyPage() {
 
     try {
       await api.patch(`/api/voyages/${row.id}/status`, { status: nextStatus });
-      await alertSuccess("สำเร็จ", isClosed ? "เปิด Voy เรียบร้อย" : "ปิด Voy เรียบร้อย");
+      await alertSuccess(
+        "สำเร็จ",
+        isClosed ? "เปิด Voy เรียบร้อย" : "ปิด Voy เรียบร้อย"
+      );
       await loadRows();
     } catch (e) {
-      await alertError("ทำรายการไม่สำเร็จ", e?.response?.data?.message || "ไม่สามารถเปลี่ยนสถานะ Voy ได้");
+      await alertError(
+        "ทำรายการไม่สำเร็จ",
+        e?.response?.data?.message || "ไม่สามารถเปลี่ยนสถานะ Voy ได้"
+      );
     }
   };
 
@@ -394,7 +486,10 @@ export default function VoyPage() {
       await alertSuccess("ลบสำเร็จ", "ลบ Voy เรียบร้อย");
       await loadRows();
     } catch (e) {
-      await alertError("ลบไม่สำเร็จ", e?.response?.data?.message || "ไม่สามารถลบ Voy ได้");
+      await alertError(
+        "ลบไม่สำเร็จ",
+        e?.response?.data?.message || "ไม่สามารถลบ Voy ได้"
+      );
     }
   };
 
@@ -409,12 +504,41 @@ export default function VoyPage() {
           <div className="text-sm text-slate-500">รายการ Voyage</div>
         </div>
 
-        {canManage && (
-          <Button className="gap-2" onClick={onOpenCreate} disabled={loadingVessels || vessels.length === 0}>
-            <Plus size={16} />
-            สร้าง Voy
+        <div className="flex items-center gap-2">
+          <Button
+            variant="report"
+            className="gap-2 cursor-pointer"
+            onClick={async () => {
+              if (filters.vesselId === "all") {
+                return alertError(
+                  "กรุณาเลือกเรือ",
+                  "รายงานนี้ต้องเลือกเรือก่อน"
+                );
+              }
+              if (filters.month === "all" || filters.year === "all") {
+                return alertError(
+                  "กรุณาเลือกเดือน/ปี",
+                  "รายงานนี้ต้องเลือกเดือนและปี"
+                );
+              }
+              setOpenReport(true);
+            }}
+          >
+            <BarChart3 size={16} />
+            Report
           </Button>
-        )}
+
+          {canManage && (
+            <Button
+              className="gap-2 cursor-pointer"
+              onClick={onOpenCreate}
+              disabled={loadingVessels || vessels.length === 0}
+            >
+              <Plus size={16} />
+              สร้าง Voy
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -427,7 +551,9 @@ export default function VoyPage() {
                 <div className="text-xs text-slate-500 mb-1">เรือ</div>
                 <Select
                   value={filters.vesselId}
-                  onChange={(e) => setFilters((p) => ({ ...p, vesselId: e.target.value }))}
+                  onChange={(e) =>
+                    setFilters((p) => ({ ...p, vesselId: e.target.value }))
+                  }
                   disabled={loadingVessels}
                 >
                   <option value="all">ทั้งหมด</option>
@@ -441,7 +567,12 @@ export default function VoyPage() {
 
               <div>
                 <div className="text-xs text-slate-500 mb-1">เดือน</div>
-                <Select value={filters.month} onChange={(e) => setFilters((p) => ({ ...p, month: e.target.value }))}>
+                <Select
+                  value={filters.month}
+                  onChange={(e) =>
+                    setFilters((p) => ({ ...p, month: e.target.value }))
+                  }
+                >
                   {monthOptions.map((m) => (
                     <option key={m.value} value={m.value}>
                       {m.label}
@@ -452,7 +583,12 @@ export default function VoyPage() {
 
               <div>
                 <div className="text-xs text-slate-500 mb-1">ปี</div>
-                <Select value={filters.year} onChange={(e) => setFilters((p) => ({ ...p, year: e.target.value }))}>
+                <Select
+                  value={filters.year}
+                  onChange={(e) =>
+                    setFilters((p) => ({ ...p, year: e.target.value }))
+                  }
+                >
                   {yearOptions().map((y) => (
                     <option key={y.value} value={y.value}>
                       {y.label}
@@ -464,12 +600,17 @@ export default function VoyPage() {
               <div>
                 <div className="text-xs text-slate-500 mb-1">ค้นหา</div>
                 <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
                   <Input
                     className="pl-9"
                     placeholder="ค้นหา"
                     value={filters.q}
-                    onChange={(e) => setFilters((p) => ({ ...p, q: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((p) => ({ ...p, q: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -492,14 +633,21 @@ export default function VoyPage() {
                     <th className="text-left font-medium px-4 py-3">เรือ</th>
                     <th className="text-left font-medium px-4 py-3">เริ่ม</th>
                     <th className="text-left font-medium px-4 py-3">สิ้นสุด</th>
-                    <th className="text-left font-medium px-4 py-3">เดือน/ปี ที่บันทึก</th>
+                    <th className="text-left font-medium px-4 py-3">
+                      เดือน/ปี ที่บันทึก
+                    </th>
                     <th className="text-left font-medium px-4 py-3">สถานะ</th>
-                    <th className="text-right font-medium px-4 py-3">ตัวเลือก</th>
+                    <th className="text-right font-medium px-4 py-3">
+                      ตัวเลือก
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.id} className="border-t border-slate-100 hover:bg-white">
+                    <tr
+                      key={r.id}
+                      className="border-t border-slate-100 hover:bg-white"
+                    >
                       <td className="px-4 py-3 text-slate-700">{r.id}</td>
                       <td className="px-4 py-3">
                         <button
@@ -508,21 +656,36 @@ export default function VoyPage() {
                           className="group inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-700 hover:bg-sky-100 hover:border-sky-300 transition cursor-pointer"
                         >
                           {r.voyNo ?? "-"}
-                          <ExternalLinkIcon size={16} className="transition-transform group-hover:translate-x-0.5" />
+                          <ExternalLinkIcon
+                            size={16}
+                            className="transition-transform group-hover:translate-x-0.5"
+                          />
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-slate-900">{r._vessel?.name ?? "-"}</td>
-                      <td className="px-4 py-3 text-slate-700">{fmtDateTime(r.startAt)}</td>
-                      <td className="px-4 py-3 text-slate-700">{fmtDateTime(r.endAt)}</td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {r.postingMonth && r.postingYear ? `${r.postingMonth}/${r.postingYear}` : "-"}
+                      <td className="px-4 py-3 text-slate-900">
+                        {r._vessel?.name ?? "-"}
                       </td>
-                      <td className="px-4 py-3 text-slate-700">{statusLabel(r.status)}</td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {fmtDateTime(r.startAt)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {fmtDateTime(r.endAt)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {r.postingMonth && r.postingYear
+                          ? `${r.postingMonth}/${r.postingYear}`
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {statusLabel(r.status)}
+                      </td>
 
                       <td className="px-4 py-3 text-right relative">
                         <Button
                           variant="ghost"
-                          onClick={() => setMenuOpenId((p) => (p === r.id ? null : r.id))}
+                          onClick={() =>
+                            setMenuOpenId((p) => (p === r.id ? null : r.id))
+                          }
                           className="px-2"
                         >
                           <MoreVertical size={18} />
@@ -545,7 +708,9 @@ export default function VoyPage() {
                               onClick={() => toggleStatus(r)}
                             >
                               <Power size={16} />
-                              {String(r.status ?? "").toUpperCase() === "CLOSED" ? "เปิด Voy" : "ปิด Voy"}
+                              {String(r.status ?? "").toUpperCase() === "CLOSED"
+                                ? "เปิด Voy"
+                                : "ปิด Voy"}
                             </button>
 
                             {isPrivileged && (
@@ -559,7 +724,6 @@ export default function VoyPage() {
                             )}
                           </div>
                         )}
-
                       </td>
                     </tr>
                   ))}
@@ -573,13 +737,20 @@ export default function VoyPage() {
       {/* Create Modal */}
       {openCreate && (
         <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/30" onClick={onCloseCreate} />
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={onCloseCreate}
+          />
           <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2">
             <Card className="shadow-xl">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="font-semibold">สร้าง Voy</div>
-                  <Button variant="ghost" onClick={onCloseCreate} disabled={savingCreate}>
+                  <Button
+                    variant="ghost"
+                    onClick={onCloseCreate}
+                    disabled={savingCreate}
+                  >
                     <X size={18} />
                   </Button>
                 </div>
@@ -591,7 +762,12 @@ export default function VoyPage() {
                     <label className="text-sm text-slate-600">เรือ</label>
                     <Select
                       value={createForm.vesselId}
-                      onChange={(e) => setCreateForm((p) => ({ ...p, vesselId: e.target.value }))}
+                      onChange={(e) =>
+                        setCreateForm((p) => ({
+                          ...p,
+                          vesselId: e.target.value,
+                        }))
+                      }
                       disabled={vessels.length === 1}
                     >
                       <option value="">-- เลือกเรือ --</option>
@@ -607,7 +783,9 @@ export default function VoyPage() {
                     <label className="text-sm text-slate-600">voyNo</label>
                     <Input
                       value={createForm.voyNo}
-                      onChange={(e) => setCreateForm((p) => ({ ...p, voyNo: e.target.value }))}
+                      onChange={(e) =>
+                        setCreateForm((p) => ({ ...p, voyNo: e.target.value }))
+                      }
                       placeholder="เช่น V2026001N"
                     />
                   </div>
@@ -617,16 +795,28 @@ export default function VoyPage() {
                     <Input
                       type="datetime-local"
                       value={createForm.startAt}
-                      onChange={(e) => setCreateForm((p) => ({ ...p, startAt: e.target.value }))}
+                      onChange={(e) =>
+                        setCreateForm((p) => ({
+                          ...p,
+                          startAt: e.target.value,
+                        }))
+                      }
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-sm text-slate-600">เดือนที่บันทึก</label>
+                      <label className="text-sm text-slate-600">
+                        เดือนที่บันทึก
+                      </label>
                       <Select
                         value={createForm.postingMonth}
-                        onChange={(e) => setCreateForm((p) => ({ ...p, postingMonth: e.target.value }))}
+                        onChange={(e) =>
+                          setCreateForm((p) => ({
+                            ...p,
+                            postingMonth: e.target.value,
+                          }))
+                        }
                       >
                         {Array.from({ length: 12 }).map((_, i) => (
                           <option key={i + 1} value={String(i + 1)}>
@@ -636,20 +826,36 @@ export default function VoyPage() {
                       </Select>
                     </div>
                     <div>
-                      <label className="text-sm text-slate-600">ปีที่บันทึก</label>
+                      <label className="text-sm text-slate-600">
+                        ปีที่บันทึก
+                      </label>
                       <Input
                         value={createForm.postingYear}
-                        onChange={(e) => setCreateForm((p) => ({ ...p, postingYear: e.target.value }))}
+                        onChange={(e) =>
+                          setCreateForm((p) => ({
+                            ...p,
+                            postingYear: e.target.value,
+                          }))
+                        }
                         placeholder="เช่น 2026"
                       />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-2">
-                    <Button type="button" variant="ghost" onClick={onCloseCreate} disabled={savingCreate}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={onCloseCreate}
+                      disabled={savingCreate}
+                    >
                       ยกเลิก
                     </Button>
-                    <Button type="submit" disabled={savingCreate} className="gap-2">
+                    <Button
+                      type="submit"
+                      disabled={savingCreate}
+                      className="gap-2"
+                    >
                       <Plus size={16} />
                       {savingCreate ? "กำลังบันทึก..." : "สร้าง"}
                     </Button>
@@ -670,7 +876,11 @@ export default function VoyPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="font-semibold">แก้ไข Voy</div>
-                  <Button variant="ghost" onClick={onCloseEdit} disabled={savingEdit}>
+                  <Button
+                    variant="ghost"
+                    onClick={onCloseEdit}
+                    disabled={savingEdit}
+                  >
                     <X size={18} />
                   </Button>
                 </div>
@@ -680,7 +890,12 @@ export default function VoyPage() {
                 <form className="space-y-3" onSubmit={submitEdit}>
                   <div>
                     <label className="text-sm text-slate-600">เรือ</label>
-                    <Select value={editForm.vesselId} onChange={(e) => setEditForm((p) => ({ ...p, vesselId: e.target.value }))}>
+                    <Select
+                      value={editForm.vesselId}
+                      onChange={(e) =>
+                        setEditForm((p) => ({ ...p, vesselId: e.target.value }))
+                      }
+                    >
                       <option value="">-- เลือกเรือ --</option>
                       {vessels.map((v) => (
                         <option key={v.id} value={String(v.id)}>
@@ -692,24 +907,40 @@ export default function VoyPage() {
 
                   <div>
                     <label className="text-sm text-slate-600">voyNo</label>
-                    <Input value={editForm.voyNo} onChange={(e) => setEditForm((p) => ({ ...p, voyNo: e.target.value }))} />
+                    <Input
+                      value={editForm.voyNo}
+                      onChange={(e) =>
+                        setEditForm((p) => ({ ...p, voyNo: e.target.value }))
+                      }
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-sm text-slate-600">เวลาเริ่ม</label>
+                      <label className="text-sm text-slate-600">
+                        เวลาเริ่ม
+                      </label>
                       <Input
                         type="datetime-local"
                         value={editForm.startAt}
-                        onChange={(e) => setEditForm((p) => ({ ...p, startAt: e.target.value }))}
+                        onChange={(e) =>
+                          setEditForm((p) => ({
+                            ...p,
+                            startAt: e.target.value,
+                          }))
+                        }
                       />
                     </div>
                     <div>
-                      <label className="text-sm text-slate-600">เวลาสิ้นสุด</label>
+                      <label className="text-sm text-slate-600">
+                        เวลาสิ้นสุด
+                      </label>
                       <Input
                         type="datetime-local"
                         value={editForm.endAt}
-                        onChange={(e) => setEditForm((p) => ({ ...p, endAt: e.target.value }))}
+                        onChange={(e) =>
+                          setEditForm((p) => ({ ...p, endAt: e.target.value }))
+                        }
                         placeholder="เว้นว่างได้"
                       />
                     </div>
@@ -717,10 +948,17 @@ export default function VoyPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-sm text-slate-600">เดือนที่บันทึก</label>
+                      <label className="text-sm text-slate-600">
+                        เดือนที่บันทึก
+                      </label>
                       <Select
                         value={editForm.postingMonth}
-                        onChange={(e) => setEditForm((p) => ({ ...p, postingMonth: e.target.value }))}
+                        onChange={(e) =>
+                          setEditForm((p) => ({
+                            ...p,
+                            postingMonth: e.target.value,
+                          }))
+                        }
                       >
                         {Array.from({ length: 12 }).map((_, i) => (
                           <option key={i + 1} value={String(i + 1)}>
@@ -730,21 +968,46 @@ export default function VoyPage() {
                       </Select>
                     </div>
                     <div>
-                      <label className="text-sm text-slate-600">ปีที่บันทึก</label>
-                      <Input value={editForm.postingYear} onChange={(e) => setEditForm((p) => ({ ...p, postingYear: e.target.value }))} />
+                      <label className="text-sm text-slate-600">
+                        ปีที่บันทึก
+                      </label>
+                      <Input
+                        value={editForm.postingYear}
+                        onChange={(e) =>
+                          setEditForm((p) => ({
+                            ...p,
+                            postingYear: e.target.value,
+                          }))
+                        }
+                      />
                     </div>
                   </div>
 
                   <div>
                     <label className="text-sm text-slate-600">สถานะ</label>
-                    <Input value={editForm.status} onChange={(e) => setEditForm((p) => ({ ...p, status: e.target.value }))} placeholder="เช่น OPEN / CLOSED" />
+                    <Input
+                      value={editForm.status}
+                      onChange={(e) =>
+                        setEditForm((p) => ({ ...p, status: e.target.value }))
+                      }
+                      placeholder="เช่น OPEN / CLOSED"
+                    />
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-2">
-                    <Button type="button" variant="ghost" onClick={onCloseEdit} disabled={savingEdit}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={onCloseEdit}
+                      disabled={savingEdit}
+                    >
                       ยกเลิก
                     </Button>
-                    <Button type="submit" disabled={savingEdit} className="gap-2">
+                    <Button
+                      type="submit"
+                      disabled={savingEdit}
+                      className="gap-2"
+                    >
                       <Pencil size={16} />
                       {savingEdit ? "กำลังบันทึก..." : "บันทึก"}
                     </Button>
@@ -755,6 +1018,15 @@ export default function VoyPage() {
           </div>
         </div>
       )}
+      <VoyFuelReportModal
+        open={openReport}
+        onClose={() => setOpenReport(false)}
+        vessel={vessels.find((v) => String(v.id) === String(filters.vesselId))}
+        month={Number(filters.month)}
+        year={Number(filters.year)}
+        voyages={rows} // rows ควรเป็น list ของ vessel เดียวอยู่แล้ว เพราะ filter บังคับ
+        kpi={950}
+      />
     </div>
   );
 }
