@@ -324,7 +324,7 @@ export default function VoyFuelReportModal({
                 <div className="space-y-4">
                   {/* TABLE */}
                   <div className="rounded-2xl border border-slate-100 bg-white overflow-auto">
-                    <table className="min-w-[1100px] w-full text-sm">
+                    <table className="min-w-275 w-full text-sm">
                       <thead className="bg-slate-50 text-slate-700">
                         <tr>
                           <th className="text-left font-medium px-4 py-3 w-56">
